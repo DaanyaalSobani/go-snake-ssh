@@ -53,14 +53,29 @@ This writes `host_key` (private) and `host_key.pub` (public) to the project root
 
 ### 2. Start the server
 
+Either with `go run`:
+
 ```sh
 go run ./cmd/snake-ssh
 ```
 
-You'll see:
+…or with Docker (recommended for actual hosting):
+
+```sh
+docker compose up -d --build
+```
+
+Either way, you'll see:
 
 ```
-2026/05/03 17:00:00 snake server on :2222
+snake server on :2222
+```
+
+To watch logs / stop the dockerized server:
+
+```sh
+docker compose logs -f
+docker compose down
 ```
 
 ### 3. Connect from another terminal

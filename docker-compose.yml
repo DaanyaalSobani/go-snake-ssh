@@ -1,0 +1,11 @@
+services:
+  snake-ssh:
+    build: .
+    container_name: snake-ssh
+    ports:
+      - "2222:2222"
+    volumes:
+      # mount the host key read-only; generate it on the host with:
+      #   ssh-keygen -t ed25519 -f host_key -N ""
+      - ./host_key:/app/host_key:ro
+    restart: unless-stopped
