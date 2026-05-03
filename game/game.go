@@ -71,7 +71,7 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 		buf.WriteString("\x1b[K\r\n")
 	}
 	w.Write(buf.Bytes()) // ONE syscall, the whole frame
-	// fmt.Fprintf(w, "Snake head is %", snake.Head)
+	fmt.Fprintf(w, "Snake head is %", snake.Head)
 }
 
 func Run(r io.Reader, w io.Writer, cfg Config) error {
@@ -135,6 +135,20 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 		}
 		snake.Head.X = snake.Head.X + direction.X
 		snake.Head.Y = snake.Head.Y + direction.Y
+		if snake.Head.X == 0 {
+			snake.Head.X = cfg.Width - 1
+		}
+		if snake.Head.Y == 0 {
+			snake.Head.Y = cfg.Height - 1
+		}
+
+		if snake.Head.X == cfg.Width {
+			snake.Head.X = 0
+		}
+		if snake.Head.Y == cfg.Height {
+			snake.Head.Y = 0
+		}
+
 		render_game(w, &game_state, &cfg)
 	}
 
