@@ -29,7 +29,8 @@ type Snake struct {
 }
 
 type GameState struct {
-	Snake *Snake
+	Snake     *Snake
+	Direction *Point
 }
 
 func render_game(w io.Writer, game_state *GameState, cfg *Config) {
@@ -102,7 +103,7 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 		},
 	}
 	direction := Point{X: 0, Y: 0}
-	game_state := GameState{Snake: &snake}
+	game_state := GameState{Snake: &snake, Direction: &direction}
 	ticker := time.NewTicker(cfg.TickRate).C
 
 	fmt.Fprintln(w, "Hello, World! FROM game.go")
@@ -133,24 +134,31 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 
 			// fmt.Fprintln(w, "Input was: ", cur_input)
 		}
-		snake.Head.X = snake.Head.X + direction.X
-		snake.Head.Y = snake.Head.Y + direction.Y
-		if snake.Head.X == 0 {
-			snake.Head.X = cfg.Width - 1
-		}
-		if snake.Head.Y == 0 {
-			snake.Head.Y = cfg.Height - 1
-		}
-
-		if snake.Head.X == cfg.Width {
-			snake.Head.X = 0
-		}
-		if snake.Head.Y == cfg.Height {
-			snake.Head.Y = 0
-		}
-
+		step_game(&game_state, &cfg)
 		render_game(w, &game_state, &cfg)
 	}
 
 	return nil
+}
+
+func step_game(game_state *GameState, cfg *Config) {
+	snake := game_state.Snake
+	direction := game_state.Direction
+
+	snake.Head.X = snake.Head.X + direction.X
+	snake.Head.Y = snake.Head.Y + direction.Y
+	if snake.Head.X == 0 {
+		snake.Head.X = cfg.Width - 1
+	}
+	if snake.Head.Y == 0 {
+		snake.Head.Y = cfg.Height - 1
+	}
+
+	if snake.Head.X == cfg.Width {
+		snake.Head.X = 0
+	}
+	if snake.Head.Y == cfg.Height {
+		snake.Head.Y = 0
+	}
+
 }
