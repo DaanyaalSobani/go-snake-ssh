@@ -86,10 +86,11 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 		buf.WriteString("\x1b[K\r\n")
 	}
 
-	// debug HUD — printed inside the buffered frame so it doesn't fight the render.
-	// NOTE: no trailing \r\n — cursor must not advance past the last visible row,
-	// otherwise the terminal scrolls when the frame is the same height as the window.
-	fmt.Fprintf(&buf, "\x1b[Khead: %+v  food: %+v  len: %d", snake.Head, *food, snake.Length)
+	// debug HUD — anchored at the row right below the grid via absolute positioning.
+	// kept short (under cfg.Width*2 chars) so it never wraps and pushes the cursor
+	// off-screen, which would scroll the terminal.
+	fmt.Fprintf(&buf, "\x1b[%d;1H\x1b[Klen:%d head:%d,%d food:%d,%d",
+		cfg.Height+1, snake.Length, snake.Head.X, snake.Head.Y, food.X, food.Y)
 
 	w.Write(buf.Bytes()) // ONE syscall, the whole frame
 }
@@ -124,7 +125,8 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 		Food: &food}
 	ticker := time.NewTicker(cfg.TickRate).C
 
-	fmt.Fprint(w, "\x1b[2J\x1b[H") // one-time clear at game start
+	fmt.Fprint(w, "\x1b[2J\x1b[H\x1b[?25l")              // clear, home, hide cursor
+	defer fmt.Fprint(w, "\x1b[?25h\x1b[2J\x1b[H\r\n") // restore cursor, clean screen on exit
 	// var current_time time.Time
 	for {
 		select {
