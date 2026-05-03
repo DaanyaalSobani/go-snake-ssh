@@ -1,1 +1,4 @@
 host_key*
+*.exe
+.claude
+dist
