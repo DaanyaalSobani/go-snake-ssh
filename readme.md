@@ -2,6 +2,12 @@
 
 A terminal snake game written in Go. Runs locally, or as an SSH server that lets multiple players connect concurrently — each gets their own independent game.
 
+**Play it now:**
+
+```sh
+ssh -p 2222 snake.dsobani.com
+```
+
 ![Snake running in a terminal](screenshots/ssh.png)
 
 ## Why
@@ -79,6 +85,14 @@ docker compose down
 ```
 
 ### 3. Connect from another terminal
+
+A live instance is running at:
+
+```sh
+ssh -p 2222 snake.dsobani.com
+```
+
+Or against your own server:
 
 ```sh
 ssh -p 2222 yourname@localhost
