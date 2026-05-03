@@ -1,6 +1,7 @@
 package game
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"time"
@@ -12,13 +13,14 @@ type Point struct {
 }
 
 type Config struct {
-	Width    int
-	Height   int
-	TickRate time.Duration
+	Width     int
+	Height    int
+	CellWidth int
+	TickRate  time.Duration
 }
 
 func DefaultConfig() Config {
-	return Config{Width: 40, Height: 20, TickRate: 120 * time.Millisecond}
+	return Config{Width: 15, Height: 15, CellWidth: 2, TickRate: 120 * time.Millisecond}
 }
 
 type Snake struct {
@@ -30,9 +32,46 @@ type GameState struct {
 	Snake *Snake
 }
 
-func render_game(w io.Writer, game_state *GameState) {
+func render_game(w io.Writer, game_state *GameState, cfg *Config) {
+	var buf bytes.Buffer
+	buf.WriteString("\x1b[H")
+
 	snake := game_state.Snake
-	fmt.Fprintln(w, "Snake head is", snake.Head)
+	grid := make([][]rune, cfg.Height)
+	for i := range grid {
+		grid[i] = make([]rune, cfg.Width)
+		for j := range grid[i] {
+			grid[i][j] = ' '
+		}
+	}
+
+	grid[snake.Head.Y][snake.Head.X] = '█'
+
+	// border: top and bottom rows
+	for x := 0; x < cfg.Width; x++ {
+		grid[0][x] = '-'
+		grid[cfg.Height-1][x] = '-'
+	}
+	// border: left and right columns
+	for y := 0; y < cfg.Height; y++ {
+		grid[y][0] = '|'
+		grid[y][cfg.Width-1] = '|'
+	}
+	// corners
+	grid[0][0] = '+'
+	grid[0][cfg.Width-1] = '+'
+	grid[cfg.Height-1][0] = '+'
+	grid[cfg.Height-1][cfg.Width-1] = '+'
+
+	for _, row := range grid {
+		for _, cell := range row {
+			buf.WriteRune(cell)
+			buf.WriteRune(cell)
+		}
+		buf.WriteString("\x1b[K\r\n")
+	}
+	w.Write(buf.Bytes()) // ONE syscall, the whole frame
+	// fmt.Fprintf(w, "Snake head is %", snake.Head)
 }
 
 func Run(r io.Reader, w io.Writer, cfg Config) error {
@@ -76,13 +115,13 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 			switch cur_input {
 			case 'w':
 				direction.X = 0
-				direction.Y = 1
+				direction.Y = -1
 			case 'a':
 				direction.X = -1
 				direction.Y = 0
 			case 's':
 				direction.X = 0
-				direction.Y = -1
+				direction.Y = 1
 			case 'd':
 				direction.X = 1
 				direction.Y = 0
@@ -92,11 +131,11 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 				return nil
 			}
 
-			fmt.Fprintln(w, "Input was: ", cur_input)
+			// fmt.Fprintln(w, "Input was: ", cur_input)
 		}
 		snake.Head.X = snake.Head.X + direction.X
 		snake.Head.Y = snake.Head.Y + direction.Y
-		render_game(w, &game_state)
+		render_game(w, &game_state, &cfg)
 	}
 
 	return nil

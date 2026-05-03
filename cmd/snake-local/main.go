@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -15,6 +14,6 @@ func main() {
 	if err := game.Run(os.Stdin, os.Stdout, game.DefaultConfig()); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(game.Point{X: 1, Y: 1})
+	// fmt.Println(game.Point{X: 1, Y: 1})
 
 }
