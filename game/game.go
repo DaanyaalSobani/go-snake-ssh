@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"time"
 )
 
@@ -24,13 +25,21 @@ func DefaultConfig() Config {
 }
 
 type Snake struct {
-	Head Point
-	Body []Point
+	Head   Point
+	Length int
 }
 
 type GameState struct {
 	Snake     *Snake
 	Direction *Point
+	Food      *Point
+}
+
+func new_food(cfg Config) Point {
+	return Point{
+		X: rand.IntN(cfg.Width-cfg.CellWidth) + cfg.CellWidth - 1,
+		Y: rand.IntN(cfg.Height-cfg.CellWidth) + cfg.CellWidth - 1,
+	}
 }
 
 func render_game(w io.Writer, game_state *GameState, cfg *Config) {
@@ -38,6 +47,8 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 	buf.WriteString("\x1b[H")
 
 	snake := game_state.Snake
+	food := game_state.Food
+
 	grid := make([][]rune, cfg.Height)
 	for i := range grid {
 		grid[i] = make([]rune, cfg.Width)
@@ -45,7 +56,7 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 			grid[i][j] = ' '
 		}
 	}
-
+	grid[food.Y][food.X] = '❤'
 	grid[snake.Head.Y][snake.Head.X] = '█'
 
 	// border: top and bottom rows
@@ -72,7 +83,7 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 		buf.WriteString("\x1b[K\r\n")
 	}
 	w.Write(buf.Bytes()) // ONE syscall, the whole frame
-	fmt.Fprintf(w, "Snake head is %", snake.Head)
+	fmt.Fprintf(w, "Snake is %d \n food is %d", snake, food)
 }
 
 func Run(r io.Reader, w io.Writer, cfg Config) error {
@@ -95,15 +106,13 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 	}()
 
 	snake := Snake{
-		Head: Point{X: 5, Y: 5},
-		Body: []Point{
-			{X: 5, Y: 5},
-			{X: 4, Y: 5},
-			{X: 3, Y: 5},
-		},
+		Head:   Point{X: 5, Y: 5},
+		Length: 0,
 	}
 	direction := Point{X: 0, Y: 0}
-	game_state := GameState{Snake: &snake, Direction: &direction}
+	food := new_food(cfg)
+	game_state := GameState{Snake: &snake, Direction: &direction,
+		Food: &food}
 	ticker := time.NewTicker(cfg.TickRate).C
 
 	fmt.Fprintln(w, "Hello, World! FROM game.go")
@@ -144,21 +153,28 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 func step_game(game_state *GameState, cfg *Config) {
 	snake := game_state.Snake
 	direction := game_state.Direction
+	food := game_state.Food
 
 	snake.Head.X = snake.Head.X + direction.X
 	snake.Head.Y = snake.Head.Y + direction.Y
 	if snake.Head.X == 0 {
-		snake.Head.X = cfg.Width - 1
-	}
-	if snake.Head.Y == 0 {
-		snake.Head.Y = cfg.Height - 1
+		snake.Head.X = cfg.Width - cfg.CellWidth
+	} else if snake.Head.X == cfg.Width-1 {
+		snake.Head.X = 1
 	}
 
-	if snake.Head.X == cfg.Width {
-		snake.Head.X = 0
+	if snake.Head.Y == 0 {
+		snake.Head.Y = cfg.Height - cfg.CellWidth
+	} else if snake.Head.Y == cfg.Height-1 {
+		snake.Head.Y = 1
 	}
-	if snake.Head.Y == cfg.Height {
-		snake.Head.Y = 0
+	if snake.Head == *food {
+		snake.Length += 1
+		old_food := *food
+		for old_food == *food {
+			*food = new_food(*cfg)
+		}
+
 	}
 
 }
