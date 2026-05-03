@@ -26,6 +26,7 @@ func DefaultConfig() Config {
 
 type Snake struct {
 	Head   Point
+	Body   []Point
 	Length int
 }
 
@@ -48,7 +49,6 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 
 	snake := game_state.Snake
 	food := game_state.Food
-
 	grid := make([][]rune, cfg.Height)
 	for i := range grid {
 		grid[i] = make([]rune, cfg.Width)
@@ -58,6 +58,9 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 	}
 	grid[food.Y][food.X] = '❤'
 	grid[snake.Head.Y][snake.Head.X] = '█'
+	for _, seg := range snake.Body {
+		grid[seg.Y][seg.X] = '█'
+	}
 
 	// border: top and bottom rows
 	for x := 0; x < cfg.Width; x++ {
@@ -82,8 +85,13 @@ func render_game(w io.Writer, game_state *GameState, cfg *Config) {
 		}
 		buf.WriteString("\x1b[K\r\n")
 	}
+
+	// debug HUD — printed inside the buffered frame so it doesn't fight the render.
+	// NOTE: no trailing \r\n — cursor must not advance past the last visible row,
+	// otherwise the terminal scrolls when the frame is the same height as the window.
+	fmt.Fprintf(&buf, "\x1b[Khead: %+v  food: %+v  len: %d", snake.Head, *food, snake.Length)
+
 	w.Write(buf.Bytes()) // ONE syscall, the whole frame
-	fmt.Fprintf(w, "Snake is %d \n food is %d", snake, food)
 }
 
 func Run(r io.Reader, w io.Writer, cfg Config) error {
@@ -107,7 +115,8 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 
 	snake := Snake{
 		Head:   Point{X: 5, Y: 5},
-		Length: 0,
+		Body:   []Point{{X: 4, Y: 5}, {X: 3, Y: 5}, {X: 2, Y: 5}},
+		Length: 3,
 	}
 	direction := Point{X: 0, Y: 0}
 	food := new_food(cfg)
@@ -115,7 +124,7 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 		Food: &food}
 	ticker := time.NewTicker(cfg.TickRate).C
 
-	fmt.Fprintln(w, "Hello, World! FROM game.go")
+	fmt.Fprint(w, "\x1b[2J\x1b[H") // one-time clear at game start
 	// var current_time time.Time
 	for {
 		select {
@@ -146,8 +155,6 @@ func Run(r io.Reader, w io.Writer, cfg Config) error {
 		step_game(&game_state, &cfg)
 		render_game(w, &game_state, &cfg)
 	}
-
-	return nil
 }
 
 func step_game(game_state *GameState, cfg *Config) {
@@ -155,26 +162,42 @@ func step_game(game_state *GameState, cfg *Config) {
 	direction := game_state.Direction
 	food := game_state.Food
 
-	snake.Head.X = snake.Head.X + direction.X
-	snake.Head.Y = snake.Head.Y + direction.Y
+	// don't advance if no direction has been chosen yet
+	if direction.X == 0 && direction.Y == 0 {
+		return
+	}
+
+	prev_head := snake.Head
+
+	snake.Head.X += direction.X
+	snake.Head.Y += direction.Y
+
 	if snake.Head.X == 0 {
-		snake.Head.X = cfg.Width - cfg.CellWidth
+		snake.Head.X = cfg.Width - 2
 	} else if snake.Head.X == cfg.Width-1 {
 		snake.Head.X = 1
 	}
 
 	if snake.Head.Y == 0 {
-		snake.Head.Y = cfg.Height - cfg.CellWidth
+		snake.Head.Y = cfg.Height - 2
 	} else if snake.Head.Y == cfg.Height-1 {
 		snake.Head.Y = 1
 	}
-	if snake.Head == *food {
-		snake.Length += 1
+
+	ate := snake.Head == *food
+	if ate {
+		snake.Length++
 		old_food := *food
 		for old_food == *food {
 			*food = new_food(*cfg)
 		}
-
 	}
 
+	// push the previous head onto the front of the body
+	snake.Body = append([]Point{prev_head}, snake.Body...)
+
+	// trim tail to keep the body at target length
+	if len(snake.Body) > snake.Length {
+		snake.Body = snake.Body[:snake.Length]
+	}
 }
